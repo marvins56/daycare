@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
+import { useAuth } from './context/AuthContext';
 
 // Layout Components
 import DashboardLayout from './components/layout/DashboardLayout';
@@ -17,41 +18,12 @@ import IncidentReporting from './components/incidents/IncidentReporting';
 import FinancialManagement from './components/finances/FinancialManagement';
 
 function App() {
-  // In a real application, this would be managed with context or Redux
-  // and would include actual authentication logic with the backend
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  const { isAuthenticated, user, logout, loading } = useAuth();
   
-  // Mock login function
-  const login = (email, password) => {
-    return new Promise((resolve, reject) => {
-      // Simulate API call
-      setTimeout(() => {
-        // For demo purposes, accept any credentials
-        if (email && password) {
-          const mockUser = {
-            id: 1,
-            firstName: 'Admin',
-            lastName: 'User',
-            email: email,
-            role: 'manager'
-          };
-          
-          setUser(mockUser);
-          setIsAuthenticated(true);
-          resolve(mockUser);
-        } else {
-          reject(new Error('Invalid credentials'));
-        }
-      }, 1000);
-    });
-  };
-  
-  // Mock logout function
-  const logout = () => {
-    setUser(null);
-    setIsAuthenticated(false);
-  };
+  // Show loading indicator if auth state is still loading
+  if (loading) {
+    return <div className="spinner-container">Loading...</div>;
+  }
   
   return (
     <Router>
@@ -62,7 +34,7 @@ function App() {
           element={
             isAuthenticated ? 
             <Navigate to="/dashboard" /> : 
-            <Login login={login} />
+            <Login />
           } 
         />
         

@@ -1,98 +1,128 @@
-import React, { useState, useEffect } from 'react';
-import { attendanceAPI, childAPI, babysitterAPI } from '../../services/api';
-import { Card, Row, Col, Button, Table, Form, Modal, Alert } from 'react-bootstrap';
-import { FaCalendarCheck, FaSearch, FaPlus, FaSignOutAlt } from 'react-icons/fa';
+import React, { useState, useEffect } from "react";
+import { attendanceAPI, childAPI, babysitterAPI } from "../../services/api";
+import {
+  Card,
+  Row,
+  Col,
+  Button,
+  Table,
+  Form,
+  Modal,
+  Alert,
+} from "react-bootstrap";
+import {
+  FaCalendarCheck,
+  FaSearch,
+  FaPlus,
+  FaSignOutAlt,
+} from "react-icons/fa";
 
 const AttendanceTracking = () => {
   const [attendance, setAttendance] = useState([]);
   const [children, setChildren] = useState([]);
   const [babysitters, setBabysitters] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [currentDate, setCurrentDate] = useState(new Date().toISOString().split('T')[0]);
-  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentDate, setCurrentDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+
   // Form state
   const [formData, setFormData] = useState({
-    child: '',
-    babysitter: '',
-    date: new Date().toISOString().split('T')[0],
-    sessionType: 'full-day',
+    child: "",
+    babysitter: "",
+    date: new Date().toISOString().split("T")[0],
+    sessionType: "full-day",
     checkInTime: new Date().toTimeString().slice(0, 5),
-    notes: ''
+    notes: "",
   });
-  
+
   // Load data on component mount
   useEffect(() => {
     fetchData();
   }, [currentDate]);
-  
+
   // Fetch all necessary data
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [attendanceData, childrenData, babysittersData] = await Promise.all([
-        attendanceAPI.getAllAttendance(currentDate),
-        childAPI.getAllChildren(),
-        babysitterAPI.getAllBabysitters()
-      ]);
-      
+      const [attendanceData, childrenData, babysittersData] = await Promise.all(
+        [
+          attendanceAPI.getAllAttendance(currentDate),
+          childAPI.getAllChildren(),
+          babysitterAPI.getAllBabysitters(),
+        ]
+      );
+
       setAttendance(attendanceData);
       setChildren(childrenData);
       setBabysitters(babysittersData);
     } catch (err) {
-      setError('Failed to load data. Please try again later.');
+      setError("Failed to load data. Please try again later.");
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
-  
+
   const handleOpenModal = () => {
     setFormData({
-      child: '',
-      babysitter: '',
+      child: "",
+      babysitter: "",
       date: currentDate,
-      sessionType: 'full-day',
+      sessionType: "full-day",
       checkInTime: new Date().toTimeString().slice(0, 5),
-      notes: ''
+      notes: "",
     });
     setShowModal(true);
   };
-  
+
   const handleCloseModal = () => {
     setShowModal(false);
-    setError('');
+    setError("");
   };
-  
-  const handleChange = e => {
+
+  const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-  
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    
+    setError("");
+
     if (!formData.child || !formData.babysitter) {
-      setError('Please select both child and babysitter');
+      setError("Please select both child and babysitter");
       return;
     }
-    
+
     try {
-      await attendanceAPI.createAttendance(formData);
+      // Create a proper datetime by combining the date and time
+      const submitData = {
+        ...formData,
+        // Create a proper ISO datetime string by combining date and time
+        checkInTime: `${formData.date}T${formData.checkInTime}:00`,
+      };
+
+      await attendanceAPI.createAttendance(submitData);
       fetchData(); // Refresh attendance list
       handleCloseModal();
     } catch (err) {
-      setError(err.msg || 'An error occurred. Please try again.');
+      setError(err.msg || "An error occurred. Please try again.");
       console.error(err);
     }
   };
-  
+
   const handleCheckout = async (id) => {
     try {
+      // Get current date and time
+      const now = new Date();
+      const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+      const currentDate = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+      
       const checkoutData = {
-        checkOutTime: new Date().toTimeString().slice(0, 5)
+        // Create a proper ISO datetime string by combining date and time
+        checkOutTime: `${currentDate}T${currentTime}:00`
       };
       
       await attendanceAPI.checkoutAttendance(id, checkoutData);
@@ -102,18 +132,25 @@ const AttendanceTracking = () => {
       console.error(err);
     }
   };
-  
+
   const handleDateChange = (e) => {
     setCurrentDate(e.target.value);
   };
-  
+
   // Filter attendance records based on search term
-  const filteredAttendance = attendance.filter(record => 
-    (record.child && record.child.fullName && record.child.fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (record.babysitter && 
-      `${record.babysitter.firstName} ${record.babysitter.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredAttendance = attendance.filter(
+    (record) =>
+      (record.child &&
+        record.child.fullName &&
+        record.child.fullName
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase())) ||
+      (record.babysitter &&
+        `${record.babysitter.firstName} ${record.babysitter.lastName}`
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()))
   );
-  
+
   if (loading) {
     return (
       <div className="spinner-container">
@@ -123,7 +160,7 @@ const AttendanceTracking = () => {
       </div>
     );
   }
-  
+
   return (
     <>
       <Card className="mb-4">
@@ -133,9 +170,9 @@ const AttendanceTracking = () => {
               <h5 className="mb-0">Attendance Tracking</h5>
             </Col>
             <Col xs="auto">
-              <Button 
-                variant="primary" 
-                size="sm" 
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={handleOpenModal}
                 className="d-flex align-items-center"
               >
@@ -146,7 +183,7 @@ const AttendanceTracking = () => {
         </Card.Header>
         <Card.Body>
           {error && <Alert variant="danger">{error}</Alert>}
-          
+
           <Row className="mb-4">
             <Col md={4}>
               <Form.Group>
@@ -175,7 +212,7 @@ const AttendanceTracking = () => {
               </Form.Group>
             </Col>
           </Row>
-          
+
           <div className="table-responsive">
             <Table hover bordered>
               <thead>
@@ -192,32 +229,50 @@ const AttendanceTracking = () => {
               </thead>
               <tbody>
                 {filteredAttendance.length > 0 ? (
-                  filteredAttendance.map(record => (
+                  filteredAttendance.map((record) => (
                     <tr key={record._id}>
-                      <td>{record.child ? record.child.fullName : 'Unknown'}</td>
                       <td>
-                        {record.babysitter 
-                          ? `${record.babysitter.firstName} ${record.babysitter.lastName}` 
-                          : 'Unknown'}
+                        {record.child ? record.child.fullName : "Unknown"}
                       </td>
                       <td>
-                        <span className={`badge ${record.sessionType === 'full-day' ? 'bg-primary' : 'bg-secondary'}`}>
-                          {record.sessionType === 'full-day' ? 'Full Day' : 'Half Day'}
+                        {record.babysitter
+                          ? `${record.babysitter.firstName} ${record.babysitter.lastName}`
+                          : "Unknown"}
+                      </td>
+                      <td>
+                        <span
+                          className={`badge ${
+                            record.sessionType === "full-day"
+                              ? "bg-primary"
+                              : "bg-secondary"
+                          }`}
+                        >
+                          {record.sessionType === "full-day"
+                            ? "Full Day"
+                            : "Half Day"}
                         </span>
                       </td>
                       <td>{record.checkInTime}</td>
-                      <td>{record.checkOutTime || '-'}</td>
+                      <td>{record.checkOutTime || "-"}</td>
                       <td>
-                        <span className={`badge ${record.status === 'checked-in' ? 'bg-success' : 'bg-secondary'}`}>
-                          {record.status === 'checked-in' ? 'Checked In' : 'Checked Out'}
+                        <span
+                          className={`badge ${
+                            record.status === "checked-in"
+                              ? "bg-success"
+                              : "bg-secondary"
+                          }`}
+                        >
+                          {record.status === "checked-in"
+                            ? "Checked In"
+                            : "Checked Out"}
                         </span>
                       </td>
-                      <td>{record.notes || '-'}</td>
+                      <td>{record.notes || "-"}</td>
                       <td>
-                        {record.status === 'checked-in' && (
-                          <Button 
-                            variant="outline-primary" 
-                            size="sm" 
+                        {record.status === "checked-in" && (
+                          <Button
+                            variant="outline-primary"
+                            size="sm"
                             onClick={() => handleCheckout(record._id)}
                           >
                             <FaSignOutAlt className="me-1" /> Check Out
@@ -228,7 +283,9 @@ const AttendanceTracking = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="text-center">No attendance records found for this date</td>
+                    <td colSpan="8" className="text-center">
+                      No attendance records found for this date
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -236,7 +293,7 @@ const AttendanceTracking = () => {
           </div>
         </Card.Body>
       </Card>
-      
+
       {/* Check In Modal */}
       <Modal show={showModal} onHide={handleCloseModal}>
         <Modal.Header closeButton>
@@ -244,7 +301,7 @@ const AttendanceTracking = () => {
         </Modal.Header>
         <Modal.Body>
           {error && <Alert variant="danger">{error}</Alert>}
-          
+
           <Form onSubmit={handleSubmit}>
             <Form.Group className="mb-3">
               <Form.Label className="required-field">Child</Form.Label>
@@ -255,14 +312,14 @@ const AttendanceTracking = () => {
                 required
               >
                 <option value="">Select Child</option>
-                {children.map(child => (
+                {children.map((child) => (
                   <option key={child._id} value={child._id}>
                     {child.fullName}
                   </option>
                 ))}
               </Form.Select>
             </Form.Group>
-            
+
             <Form.Group className="mb-3">
               <Form.Label className="required-field">Babysitter</Form.Label>
               <Form.Select
@@ -272,14 +329,14 @@ const AttendanceTracking = () => {
                 required
               >
                 <option value="">Select Babysitter</option>
-                {babysitters.map(babysitter => (
+                {babysitters.map((babysitter) => (
                   <option key={babysitter._id} value={babysitter._id}>
                     {`${babysitter.firstName} ${babysitter.lastName}`}
                   </option>
                 ))}
               </Form.Select>
             </Form.Group>
-            
+
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
@@ -295,7 +352,9 @@ const AttendanceTracking = () => {
               </Col>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label className="required-field">Check-In Time</Form.Label>
+                  <Form.Label className="required-field">
+                    Check-In Time
+                  </Form.Label>
                   <Form.Control
                     type="time"
                     name="checkInTime"
@@ -306,7 +365,7 @@ const AttendanceTracking = () => {
                 </Form.Group>
               </Col>
             </Row>
-            
+
             <Form.Group className="mb-3">
               <Form.Label className="required-field">Session Type</Form.Label>
               <Form.Select
@@ -319,7 +378,7 @@ const AttendanceTracking = () => {
                 <option value="half-day">Half Day</option>
               </Form.Select>
             </Form.Group>
-            
+
             <Form.Group className="mb-3">
               <Form.Label>Notes</Form.Label>
               <Form.Control
@@ -331,9 +390,13 @@ const AttendanceTracking = () => {
                 placeholder="Any special instructions for today"
               />
             </Form.Group>
-            
+
             <div className="d-flex justify-content-end mt-3">
-              <Button variant="secondary" onClick={handleCloseModal} className="me-2">
+              <Button
+                variant="secondary"
+                onClick={handleCloseModal}
+                className="me-2"
+              >
                 Cancel
               </Button>
               <Button variant="primary" type="submit">

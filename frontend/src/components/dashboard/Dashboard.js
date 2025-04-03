@@ -7,6 +7,7 @@ import {
   FaCalendarCheck,
   FaExclamationTriangle
 } from 'react-icons/fa';
+import { babysitterAPI, childAPI, attendanceAPI, incidentAPI, paymentAPI, expenseAPI } from '../../services/api';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -23,53 +24,63 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    // In a real implementation, this would fetch data from the API
-    // For now, we'll use mock data
-    const mockStats = {
-      babysitterCount: 2,
-      childrenCount: 2,
-      attendanceToday: 2,
-      incidentsOpen: 1,
-      monthlyIncome: 125000,
-      monthlyExpenses: 73000
+    const fetchDashboardData = async () => {
+      try {
+        // Get today's date in YYYY-MM-DD format
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Get current month first and last day for financial data
+        const currentDate = new Date();
+        const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+          .toISOString().split('T')[0];
+        const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+          .toISOString().split('T')[0];
+        
+        // Fetch all data in parallel
+        const [babysitters, children, todayAttendance, openIncidents, recentIncidents, payments, expenses] = await Promise.all([
+          babysitterAPI.getAllBabysitters(),
+          childAPI.getAllChildren(),
+          attendanceAPI.getAllAttendance(today),
+          incidentAPI.getAllIncidents('open'),
+          incidentAPI.getAllIncidents(), // Get all incidents, will filter for recent ones
+          paymentAPI.getAllPayments({ startDate: firstDay, endDate: lastDay }),
+          expenseAPI.getAllExpenses({ startDate: firstDay, endDate: lastDay })
+        ]);
+        
+        // Calculate monthly income (sum of payments)
+        const monthlyIncome = payments.reduce((sum, payment) => sum + payment.totalAmount, 0);
+        
+        // Calculate monthly expenses (sum of expenses)
+        const monthlyExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+        
+        // Set statistics
+        setStats({
+          babysitterCount: babysitters.length,
+          childrenCount: children.length,
+          attendanceToday: todayAttendance.length,
+          incidentsOpen: openIncidents.length,
+          monthlyIncome,
+          monthlyExpenses
+        });
+        
+        // Set recent attendance (today's records)
+        setRecentAttendance(todayAttendance);
+        
+        // Set recent incidents (latest 5)
+        const sortedIncidents = recentIncidents.sort((a, b) => 
+          new Date(b.date) - new Date(a.date)
+        ).slice(0, 5);
+        
+        setRecentIncidents(sortedIncidents);
+        
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     
-    const mockRecentAttendance = [
-      {
-        id: 1,
-        child: { id: 1, fullName: 'Emma Johnson' },
-        babysitter: { id: 1, firstName: 'Jane', lastName: 'Doe' },
-        date: '2025-04-03',
-        sessionType: 'full-day',
-        checkInTime: '08:30',
-        status: 'checked-in'
-      },
-      {
-        id: 2,
-        child: { id: 2, fullName: 'Noah Williams' },
-        babysitter: { id: 2, firstName: 'Alice', lastName: 'Smith' },
-        date: '2025-04-03',
-        sessionType: 'half-day',
-        checkInTime: '09:15',
-        status: 'checked-in'
-      }
-    ];
-    
-    const mockRecentIncidents = [
-      {
-        id: 1,
-        child: { id: 1, fullName: 'Emma Johnson' },
-        date: '2025-04-03',
-        incidentType: 'health',
-        severity: 'medium',
-        status: 'open'
-      }
-    ];
-    
-    setStats(mockStats);
-    setRecentAttendance(mockRecentAttendance);
-    setRecentIncidents(mockRecentIncidents);
-    setLoading(false);
+    fetchDashboardData();
   }, []);
   
   if (loading) {
@@ -165,7 +176,7 @@ const Dashboard = () => {
               <Row>
                 <Col>
                   <h6 className="text-primary">Monthly Income</h6>
-                  <h4>₦{(stats.monthlyIncome / 100).toLocaleString()}</h4>
+                  <h4>UGX {(stats.monthlyIncome / 100).toLocaleString()}</h4>
                 </Col>
                 <Col xs="auto">
                   <div className="dashboard-card-icon">
@@ -182,7 +193,7 @@ const Dashboard = () => {
               <Row>
                 <Col>
                   <h6 className="text-danger">Monthly Expenses</h6>
-                  <h4>₦{(stats.monthlyExpenses / 100).toLocaleString()}</h4>
+                  <h4>UGX {(stats.monthlyExpenses / 100).toLocaleString()}</h4>
                 </Col>
                 <Col xs="auto">
                   <div className="dashboard-card-icon">
@@ -216,10 +227,10 @@ const Dashboard = () => {
                   <tbody>
                     {recentAttendance.length > 0 ? (
                       recentAttendance.map(record => (
-                        <tr key={record.id}>
+                        <tr key={record._id}>
                           <td>{record.child.fullName}</td>
                           <td>{`${record.babysitter.firstName} ${record.babysitter.lastName}`}</td>
-                          <td>{record.checkInTime}</td>
+                          <td>{new Date(record.checkInTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</td>
                           <td>
                             <span className={`badge ${record.sessionType === 'full-day' ? 'bg-primary' : 'bg-secondary'}`}>
                               {record.sessionType === 'full-day' ? 'Full Day' : 'Half Day'}
@@ -264,7 +275,7 @@ const Dashboard = () => {
                   <tbody>
                     {recentIncidents.length > 0 ? (
                       recentIncidents.map(incident => (
-                        <tr key={incident.id}>
+                        <tr key={incident._id}>
                           <td>{new Date(incident.date).toLocaleDateString()}</td>
                           <td>{incident.child.fullName}</td>
                           <td>

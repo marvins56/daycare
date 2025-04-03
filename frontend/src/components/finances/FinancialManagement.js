@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { expenseAPI, paymentAPI } from '../../services/api';
+import { expenseAPI, paymentAPI, babysitterAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Card, Row, Col, Button, Table, Form, Modal, Alert, Tabs, Tab } from 'react-bootstrap';
 import { FaMoneyBillWave, FaSearch, FaPlus, FaEdit, FaTrash, FaChartBar } from 'react-icons/fa';
@@ -49,6 +49,7 @@ const FinancialManagement = () => {
   // Fetch all necessary data
   const fetchData = async () => {
     setLoading(true);
+    setError('');
     try {
       // Get current date for filtering
       const today = new Date();
@@ -61,10 +62,11 @@ const FinancialManagement = () => {
       };
       
       // Fetch data in parallel
-      const [paymentsData, expensesData, expenseSummaryData] = await Promise.all([
+      const [paymentsData, expensesData, expenseSummaryData, babysittersData] = await Promise.all([
         paymentAPI.getAllPayments(),
         expenseAPI.getAllExpenses(),
-        expenseAPI.getExpenseSummary(dateRange)
+        expenseAPI.getExpenseSummary(dateRange),
+        babysitterAPI.getAllBabysitters()
       ]);
       
       setIncomeRecords(paymentsData);
@@ -72,14 +74,11 @@ const FinancialManagement = () => {
       setExpenseSummary(expenseSummaryData.summary);
       setTotalIncome(paymentsData.reduce((sum, record) => sum + record.totalAmount, 0));
       setTotalExpenses(expensesData.reduce((sum, record) => sum + record.amount, 0));
-      
-      // Fetch babysitters for expense form
-      const babysittersResponse = await fetch('/api/babysitters');
-      const babysittersData = await babysittersResponse.json();
       setBabysitters(babysittersData);
+      
     } catch (err) {
-      setError('Failed to load financial data. Please try again later.');
-      console.error(err);
+      console.error('Error fetching financial data:', err);
+      setError('Failed to load financial data: ' + (err.msg || err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
@@ -289,7 +288,7 @@ const FinancialManagement = () => {
               <Row>
                 <Col>
                   <h6 className="text-primary">Total Income</h6>
-                  <h4>₦{(totalIncome / 100).toLocaleString()}</h4>
+                  <h4>UGX {(totalIncome / 100).toLocaleString()}</h4>
                 </Col>
                 <Col xs="auto">
                   <div className="dashboard-card-icon">
@@ -306,7 +305,7 @@ const FinancialManagement = () => {
               <Row>
                 <Col>
                   <h6 className="text-danger">Total Expenses</h6>
-                  <h4>₦{(totalExpenses / 100).toLocaleString()}</h4>
+                  <h4>UGX {(totalExpenses / 100).toLocaleString()}</h4>
                 </Col>
                 <Col xs="auto">
                   <div className="dashboard-card-icon">
@@ -323,7 +322,7 @@ const FinancialManagement = () => {
               <Row>
                 <Col>
                   <h6 className={balance >= 0 ? 'text-success' : 'text-danger'}>Balance</h6>
-                  <h4>₦{(balance / 100).toLocaleString()}</h4>
+                  <h4>UGX {(balance / 100).toLocaleString()}</h4>
                 </Col>
                 <Col xs="auto">
                   <div className="dashboard-card-icon">
@@ -349,7 +348,7 @@ const FinancialManagement = () => {
                   <Card className="mb-3">
                     <Card.Body className="p-3">
                       <h6 className="text-capitalize">{category.category.replace('_', ' ')}</h6>
-                      <h5>₦{(category.totalAmount / 100).toLocaleString()}</h5>
+                      <h5>UGX {(category.totalAmount / 100).toLocaleString()}</h5>
                       <div className="progress">
                         <div 
                           className={`progress-bar ${
@@ -456,7 +455,7 @@ const FinancialManagement = () => {
                               {(income.paymentType || 'cash').replace('_', ' ')}
                             </span>
                           </td>
-                          <td className="text-end">₦{(income.totalAmount / 100).toLocaleString()}</td>
+                          <td className="text-end">UGX {(income.totalAmount / 100).toLocaleString()}</td>
                           <td>{income.notes || '-'}</td>
                           {hasRole('manager') && (
                             <td>
@@ -523,7 +522,7 @@ const FinancialManagement = () => {
                               ? `${expense.babysitter.firstName} ${expense.babysitter.lastName}` 
                               : '-'}
                           </td>
-                          <td className="text-end">₦{(expense.amount / 100).toLocaleString()}</td>
+                          <td className="text-end">UGX {(expense.amount / 100).toLocaleString()}</td>
                           <td>{expense.notes || '-'}</td>
                           {hasRole('manager') && (
                             <td>
@@ -600,7 +599,7 @@ const FinancialManagement = () => {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label className="required-field">Amount (₦)</Form.Label>
+                  <Form.Label className="required-field">Amount (UGX)</Form.Label>
                   <Form.Control
                     type="number"
                     step="0.01"
@@ -709,7 +708,7 @@ const FinancialManagement = () => {
             <Row>
               <Col md={6}>
                 <Form.Group className="mb-3">
-                  <Form.Label className="required-field">Amount (₦)</Form.Label>
+                  <Form.Label className="required-field">Amount (UGX)</Form.Label>
                   <Form.Control
                     type="number"
                     step="0.01"

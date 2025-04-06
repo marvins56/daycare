@@ -1,58 +1,77 @@
-const mongoose = require('mongoose');
+// models/Incident.js
+module.exports = (sequelize, DataTypes) => {
+  const Incident = sequelize.define('Incident', {
+    childId: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Children',
+        key: 'id'
+      }
+    },
+    reportedById: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Babysitters',
+        key: 'id'
+      }
+    },
+    date: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW
+    },
+    incidentType: {
+      type: DataTypes.ENUM('health', 'behavior', 'accident', 'other'),
+      allowNull: false
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: false
+    },
+    severity: {
+      type: DataTypes.ENUM('low', 'medium', 'high'),
+      defaultValue: 'low'
+    },
+    actionTaken: {
+      type: DataTypes.TEXT,
+      allowNull: false
+    },
+    parentNotified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    notificationTime: {
+      type: DataTypes.DATE
+    },
+    followUpRequired: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    followUpNotes: {
+      type: DataTypes.TEXT
+    },
+    status: {
+      type: DataTypes.ENUM('open', 'resolved'),
+      defaultValue: 'open'
+    }
+  }, {
+    timestamps: true
+  });
 
-const IncidentSchema = new mongoose.Schema({
-  child: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'Child',
-    required: [true, 'Please add child reference']
-  },
-  reportedBy: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'Babysitter',
-    required: [true, 'Please add babysitter who reported the incident']
-  },
-  date: {
-    type: Date,
-    default: Date.now,
-    required: [true, 'Please add incident date']
-  },
-  incidentType: {
-    type: String,
-    enum: ['health', 'behavior', 'accident', 'other'],
-    required: [true, 'Please specify incident type']
-  },
-  description: {
-    type: String,
-    required: [true, 'Please add incident description']
-  },
-  severity: {
-    type: String,
-    enum: ['low', 'medium', 'high'],
-    default: 'low'
-  },
-  actionTaken: {
-    type: String,
-    required: [true, 'Please describe action taken']
-  },
-  parentNotified: {
-    type: Boolean,
-    default: false
-  },
-  notificationTime: {
-    type: Date
-  },
-  followUpRequired: {
-    type: Boolean,
-    default: false
-  },
-  followUpNotes: {
-    type: String
-  },
-  status: {
-    type: String,
-    enum: ['open', 'resolved'],
-    default: 'open'
-  }
-});
+  // Define associations
+  Incident.associate = function(models) {
+    Incident.belongsTo(models.Child, {
+      foreignKey: 'childId',
+      as: 'child'
+    });
+    
+    Incident.belongsTo(models.Babysitter, {
+      foreignKey: 'reportedById',
+      as: 'reportedBy'
+    });
+  };
 
-module.exports = mongoose.model('Incident', IncidentSchema);
+  return Incident;
+};

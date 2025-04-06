@@ -1,35 +1,51 @@
-const mongoose = require('mongoose');
+// models/Expense.js
+module.exports = (sequelize, DataTypes) => {
+  const Expense = sequelize.define('Expense', {
+    category: {
+      type: DataTypes.ENUM('salary', 'toys', 'maintenance', 'utilities', 'other'),
+      allowNull: false
+    },
+    description: {
+      type: DataTypes.STRING,
+      allowNull: false
+    },
+    amount: {
+      type: DataTypes.INTEGER, // Store in cents
+      allowNull: false,
+      validate: {
+        min: { args: [1], msg: 'Amount must be greater than 0' }
+      }
+    },
+    date: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW
+    },
+    approvedById: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Users',
+        key: 'id'
+      }
+    },
+    receiptImage: {
+      type: DataTypes.STRING
+    },
+    notes: {
+      type: DataTypes.TEXT
+    }
+  }, {
+    timestamps: true
+  });
 
-const ExpenseSchema = new mongoose.Schema({
-  category: {
-    type: String,
-    enum: ['salary', 'toys', 'maintenance', 'utilities', 'other'],
-    required: [true, 'Please specify expense category']
-  },
-  description: {
-    type: String,
-    required: [true, 'Please add expense description']
-  },
-  amount: {
-    type: Number,
-    required: [true, 'Please add expense amount']
-  },
-  date: {
-    type: Date,
-    default: Date.now,
-    required: [true, 'Please add expense date']
-  },
-  approvedBy: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'User',
-    required: [true, 'Please add user who approved expense']
-  },
-  receiptImage: {
-    type: String
-  },
-  notes: {
-    type: String
-  }
-});
+  // Define associations
+  Expense.associate = function(models) {
+    Expense.belongsTo(models.User, {
+      foreignKey: 'approvedById',
+      as: 'approvedBy'
+    });
+  };
 
-module.exports = mongoose.model('Expense', ExpenseSchema);
+  return Expense;
+};
